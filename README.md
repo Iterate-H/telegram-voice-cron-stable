@@ -131,14 +131,11 @@ Every code path produces at least one voice bubble — delivery never silently f
 ```
 ├── README.md
 ├── README.zh-CN.md
-├── SKILL.md                    # OpenClaw skill definition
-├── skill-info.json             # Skill metadata
+├── SKILL.md                      # OpenClaw skill definition (agent instructions)
 ├── prompts/
 │   └── ai-intel-daily-prompt.md  # The core prompt (customizable)
-├── scripts/
-│   └── apply-stable-cron.sh      # One-command setup
-└── dist/
-    └── telegram-voice-cron-stable.skill  # Packaged skill (zip)
+└── scripts/
+    └── apply-stable-cron.sh      # One-command setup
 ```
 
 ## Requirements

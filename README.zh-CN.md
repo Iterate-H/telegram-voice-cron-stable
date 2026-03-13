@@ -129,10 +129,7 @@ OpenClaw 的定时消息推送到 Telegram 有已知的 bug——消息发了但
 │   └── ai-intel-daily-prompt.md  ← 核心 prompt，改这个就能改日报内容
 ├── scripts/
 │   └── apply-stable-cron.sh      ← 一键配置脚本
-├── SKILL.md                      ← OpenClaw skill 定义文件
-├── skill-info.json               ← 打包用的元数据
-└── dist/
-    └── *.skill                   ← 打包好的 skill 文件
+└── SKILL.md                      ← OpenClaw skill 定义文件（给 agent 读的指令）
 ```
 
 ## 需要什么
