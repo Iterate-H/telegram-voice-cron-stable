@@ -43,6 +43,13 @@ The prompt enforces strict filtering:
 
 ## Quick Start
 
+### 0. Clone
+
+```bash
+git clone https://github.com/Iterate-H/ai-daily-report.git
+cd ai-daily-report
+```
+
 ### 1. Create a cron job in OpenClaw
 
 ```bash

@@ -42,6 +42,13 @@
 
 ## 快速开始
 
+### 0. 下载
+
+```bash
+git clone https://github.com/Iterate-H/ai-daily-report.git
+cd ai-daily-report
+```
+
 ### 1. 创建定时任务
 
 ```bash
