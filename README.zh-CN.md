@@ -1,49 +1,48 @@
-# AI 效率日报（自动化情报管线）
+# AI 效率日报
 
 [English](./README.md) | 中文
 
-全自动 AI 情报管线：每天扫描全球 AI 动态，过滤炒作噪音，生成结构化文字 + 语音日报，推送到 Telegram。
+每天早上 8:30，自动扫一遍全球 AI 动态，过滤掉炒作和噪音，把真正有用的东西整理成一份日报，文字 + 语音推送到你的 Telegram。
 
-基于 [OpenClaw](https://github.com/openclaw/openclaw) + [Edge TTS](https://github.com/nicekid1/node-edge-tts) 构建。
+基于 [OpenClaw](https://github.com/openclaw/openclaw) + [Edge TTS](https://github.com/nicekid1/node-edge-tts)。
 
-## 你能得到什么
+## 每天收到什么
 
-每天早上 08:30，Telegram 收到一份结构化日报——文字版可读，语音气泡可以通勤路上听：
+一份结构化日报。文字版直接看，语音版通勤路上听：
 
-- **S 级核心关注**（0–2 条）：经过验证的技术突破或立即可用的工具，附带行动步骤
-- **B 级工具箱更新**（3–6 条）：实用工具/开源项目，每条标注使用场景和来源可信度
-- **行业降噪**：今天可以忽略什么、为什么
-- **3 条行动建议**：今天就能执行的具体下一步
+- **核心关注**（0–2 条）：真正的技术突破或马上能用的工具，附带"今天就能做的一步"
+- **工具箱更新**（3–6 条）：实用的开源项目和工具，每条都标了使用场景和来源靠不靠谱
+- **降噪区**：今天刷屏但不值得看的东西
+- **3 条行动建议**：具体到一个命令、一个链接、一个设置
 
-## 反炒作原则
+## 反炒作
 
-Prompt 强制执行严格的筛选标准：
+这份日报的核心原则是**只讲事实，不贩卖焦虑**：
 
-- **保留**：基座模型/技术突破（A 类）、立刻可用的提效工具/插件/开源项目（B 类）
-- **丢弃**：纯观点输出、无 Demo/无代码的 "PPT 产品"、股市波动、营销号惊悚标题
-- **来源可信度评级**：每条标注 S/A/B/C（官方 repo > 高星活跃开源 > 聚合榜单 > 个人二次转载）
-- **验证要求**：S 级条目必须能从官方源抓取到可验证文本，否则降级或丢弃
+- **留下**：模型/架构突破、马上能用的工具和插件、有代码有 Demo 的开源项目
+- **扔掉**：纯观点、没代码的 PPT 产品、股价波动、营销号标题党
+- **来源打分**：每条标注可信度——官方 repo（S）> 活跃开源（A）> 榜单聚合（B）> 个人转载（C）
+- **S 级条目必须可验证**：抓不到官方原文的，直接降级或丢弃
 
-## 工作流程
+## 怎么跑起来的
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
-│ Cron 08:30  │────▶│ Agent 扫描   │────▶│ 筛选/分级    │────▶│ Telegram │
-│ (OpenClaw)  │     │ 多源检索     │     │ 反炒作过滤   │     │ 文字 +   │
-│             │     │ (web_search  │     │ S/B/C/D 分级 │     │ 语音 🔊  │
-│             │     │ + web_fetch) │     │              │     │          │
-└─────────────┘     └──────────────┘     └──────────────┘     └──────────┘
+ 定时触发        AI 搜索 + 抓取       筛选分级          推送到手机
+┌─────────┐    ┌──────────────┐    ┌───────────┐    ┌───────────┐
+│ 每天8:30 │──▶│ 搜 5 类数据源 │──▶│ 反炒作过滤 │──▶│ 文字+语音  │
+│ 自动启动  │    │ 官方源交叉验证 │    │ 按S/B/C分级│    │ 到 Telegram│
+└─────────┘    └──────────────┘    └───────────┘    └───────────┘
 ```
 
-1. **OpenClaw cron** 每天触发一个隔离 agent 会话
-2. **Agent** 执行 [prompt](./prompts/ai-intel-daily-prompt.md)：搜索 5 类数据源，交叉验证官方链接
-3. **日报** 按结构化格式生成，包含可执行的行动建议
-4. **投递**：文字通过 announce 投递，语音通过 Edge TTS 生成（`asVoice=true`）
-5. **TTS 兜底**：分段重试 → 失败说明 → 降级精简语音（永不静默失败）
+1. OpenClaw 每天定时启动一个独立的 AI 会话
+2. AI 按照 [prompt](./prompts/ai-intel-daily-prompt.md) 搜索 GitHub Trending、HuggingFace、官方博客等 5 类来源，逐条验证
+3. 生成结构化日报，附带可执行的行动建议
+4. 文字版自动推送到 Telegram，同时用 Edge TTS 生成语音版一起发过去
+5. 语音生成失败？自动重试，再失败发一条精简版语音保底——不会漏发
 
 ## 快速开始
 
-### 1. 在 OpenClaw 中创建 cron job
+### 1. 创建定时任务
 
 ```bash
 openclaw cron add \
@@ -53,97 +52,95 @@ openclaw cron add \
   --session isolated \
   --announce \
   --channel telegram \
-  --to <你的telegram-chat-id> \
+  --to <你的 Telegram Chat ID> \
   --best-effort-deliver \
   --timeout-seconds 900
 ```
 
-### 2. 应用稳定投递模板
+### 2. 配置日报模板
 
 ```bash
 bash scripts/apply-stable-cron.sh \
-  --job-id <cronJobId> \
-  --target <你的telegram-chat-id> \
+  --job-id <任务ID> \
+  --target <你的 Telegram Chat ID> \
   --prompt-file /absolute/path/to/prompts/ai-intel-daily-prompt.md \
   --voice zh-CN-XiaoxiaoNeural
 ```
 
-### 3. 测试
+### 3. 跑一次试试
 
 ```bash
-openclaw cron run <cronJobId>
-openclaw cron runs --id <cronJobId> --limit 1
+openclaw cron run <任务ID>
+openclaw cron runs --id <任务ID> --limit 1
 ```
 
-检查 Telegram 是否收到文字消息 + 圆形语音气泡。
+去 Telegram 看看有没有收到文字 + 圆形语音气泡。
 
-## 自定义
+## 按你的需求改
 
-### 修改 Prompt
+### 改内容：编辑 Prompt
 
-编辑 [`prompts/ai-intel-daily-prompt.md`](./prompts/ai-intel-daily-prompt.md)，可调整：
+编辑 [`prompts/ai-intel-daily-prompt.md`](./prompts/ai-intel-daily-prompt.md)：
 
-- **数据源**：增删白名单（GitHub、HuggingFace、官方博客等）
-- **筛选标准**：根据你的领域调整 S 级和噪音的定义
-- **输出格式**：调整章节结构、匹配你的阅读习惯
-- **语言**：prompt 是中文的，但换成英文输出格式即可生成英文日报
+- **换数据源**：增删白名单里的网站
+- **换筛选标准**：根据你的领域重新定义什么算"核心关注"
+- **换输出格式**：调整章节结构
+- **换语言**：把输出格式改成英文就能生成英文日报
 
-### 切换语音
+### 换语音
 
 ```bash
-# 常用语音
 --voice zh-CN-XiaoxiaoNeural    # 中文女声（默认）
 --voice zh-CN-YunxiNeural       # 中文男声
 --voice en-US-AriaNeural        # 英文女声
 ```
 
-### 修改时间
+### 换时间
 
 ```bash
-openclaw cron edit <jobId> --cron "0 9 * * *"    # 每天 09:00
-openclaw cron edit <jobId> --cron "0 9 * * 1-5"  # 仅工作日
+openclaw cron edit <任务ID> --cron "0 9 * * *"    # 改成每天 9 点
+openclaw cron edit <任务ID> --cron "0 9 * * 1-5"  # 只在工作日发
 ```
 
-## 投递稳定性
+## 消息推送稳定性
 
-本项目包含对 OpenClaw announce 投递已知 bug 的解决方案（[#14743](https://github.com/openclaw/openclaw/issues/14743)、[#25670](https://github.com/openclaw/openclaw/issues/25670)、[#31714](https://github.com/openclaw/openclaw/issues/31714)），这些 bug 会导致 Telegram 消息静默丢失。
+OpenClaw 的定时消息推送到 Telegram 有已知的 bug——消息发了但 Telegram 收不到，也没有报错（[#14743](https://github.com/openclaw/openclaw/issues/14743)、[#25670](https://github.com/openclaw/openclaw/issues/25670)、[#31714](https://github.com/openclaw/openclaw/issues/31714)）。
 
-**OpenClaw v2026.3.12+**（推荐）：直接使用 `--announce` 模式，修复已包含在内。
+本项目已经处理了这个问题：
 
-**旧版本**：apply 脚本会设置 `delivery.mode=none`，agent 通过 tool call 直接发送文字和语音，绕过损坏的 announce 管线。
+- **OpenClaw v2026.3.12+**（推荐）：官方已修复，用 `--announce` 模式即可
+- **旧版本**：脚本会自动绕过有问题的推送通道，由 AI 直接发消息到 Telegram
 
-### TTS 降级链
+### 语音发送失败怎么办
 
-| 阶段 | 条件 | 动作 |
-|------|------|------|
-| 1 | TTS 成功 | 正常发送语音气泡 |
-| 2 | 首次失败 | 分段重试（每段 <= 800 字） |
-| 3 | 二次失败 | 发送"失败说明"文本 |
-| 4 | 降级语音 | 60 秒内发送精简语音（标题 + 3 条建议） |
+| 阶段 | 发生了什么 | 系统会做什么 |
+|------|-----------|------------|
+| 1 | 语音生成成功 | 正常发送 |
+| 2 | 第一次失败 | 把长文本拆成短段重试 |
+| 3 | 还是失败 | 先发一条"语音生成失败"的文字通知 |
+| 4 | 保底 | 60 秒内发一条精简版语音（只读标题和 3 条建议） |
 
-任何路径都不会静默跳过语音——至少产出一条语音气泡。
+**不会出现"语音没了也没通知"的情况。**
 
-## 文件结构
+## 文件说明
 
 ```
-├── README.md
-├── README.zh-CN.md
-├── SKILL.md                    # OpenClaw skill 定义
-├── skill-info.json             # Skill 元数据
 ├── prompts/
-│   └── ai-intel-daily-prompt.md  # 核心 prompt（可自定义）
+│   └── ai-intel-daily-prompt.md  ← 核心 prompt，改这个就能改日报内容
 ├── scripts/
-│   └── apply-stable-cron.sh      # 一键配置脚本
+│   └── apply-stable-cron.sh      ← 一键配置脚本
+├── SKILL.md                      ← OpenClaw skill 定义文件
+├── skill-info.json               ← 打包用的元数据
 └── dist/
-    └── telegram-voice-cron-stable.skill  # 打包文件（zip）
+    └── *.skill                   ← 打包好的 skill 文件
 ```
 
-## 依赖
+## 需要什么
 
-- [OpenClaw](https://github.com/openclaw/openclaw)（需配置 Telegram 频道）
-- [Edge TTS](https://github.com/nicekid1/node-edge-tts)（免费，无需 API Key）
-- 网络连接（用于源扫描和 TTS）
+- [OpenClaw](https://github.com/openclaw/openclaw)，配好 Telegram 机器人
+- [Edge TTS](https://github.com/nicekid1/node-edge-tts)，免费，不需要 API Key
+- 能联网（搜索数据源 + 生成语音都需要）
 
-## 许可证
+## License
 
 MIT
