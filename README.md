@@ -24,7 +24,7 @@ This skill provides a deterministic delivery template that bypasses the unreliab
 
 ```bash
 # Clone
-git clone https://github.com/huiru07/telegram-voice-cron-stable.git
+git clone https://github.com/Iterate-H/telegram-voice-cron-stable.git
 
 # Apply to a cron job
 bash scripts/apply-stable-cron.sh \
