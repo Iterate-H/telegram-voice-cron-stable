@@ -1,5 +1,7 @@
 # telegram-voice-cron-stable
 
+English | [中文](./README.zh-CN.md)
+
 An [OpenClaw](https://github.com/openclaw/openclaw) skill that stabilizes scheduled Telegram text + voice delivery for cron jobs.
 
 ## Problem
