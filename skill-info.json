@@ -1,0 +1,12 @@
+{
+  "name": "telegram-voice-cron-stable",
+  "version": "1.0.0",
+  "description": "Stabilize scheduled Telegram text+voice delivery for OpenClaw cron jobs",
+  "author": "moltbot",
+  "license": "MIT",
+  "files": [
+    "SKILL.md",
+    "scripts/",
+    "skill-info.json"
+  ]
+}
