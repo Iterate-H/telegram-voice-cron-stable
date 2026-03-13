@@ -1,102 +1,151 @@
-# telegram-voice-cron-stable
+# AI Daily Intelligence Report
 
 English | [中文](./README.zh-CN.md)
 
-An [OpenClaw](https://github.com/openclaw/openclaw) skill that stabilizes scheduled Telegram text + voice delivery for cron jobs.
+A fully automated AI news curation pipeline: scans global AI developments daily, filters out hype, and delivers a structured text + voice report to Telegram every morning.
 
-## Problem
+Built on [OpenClaw](https://github.com/openclaw/openclaw) + [Edge TTS](https://github.com/nicekid1/node-edge-tts).
 
-OpenClaw's cron announce pipeline has known silent-failure bugs when delivering to Telegram ([#14743](https://github.com/openclaw/openclaw/issues/14743), [#25670](https://github.com/openclaw/openclaw/issues/25670), [#31714](https://github.com/openclaw/openclaw/issues/31714)):
+## What You Get
 
-- Messages sent via `delivery.mode=announce` never reach Telegram (no error logged)
-- Internal relay text leaks into user-visible messages
-- `deliveryStatus` falsely reports `delivered` while nothing was actually sent
+Every day at 08:30, a structured report lands in your Telegram — both as readable text and a voice bubble you can listen to while commuting:
 
-## Solution
+- **S-tier picks** (0–2): verified breakthroughs or immediately useful tools, with action steps
+- **Toolbox updates** (3–6): practical tools/repos, each with use-case scenario and trust rating
+- **Noise filter**: what to ignore today and why
+- **3 action items**: concrete next steps you can execute today
 
-This skill provides a deterministic delivery template that bypasses the unreliable announce relay:
+## Anti-Hype Philosophy
 
-1. **`delivery.mode=none`** — disables Gateway announce relay entirely
-2. **Explicit send steps** — agent sends text and voice (`asVoice=true`) directly via tool calls
-3. **TTS fallback chain** — automatic retry with chunking, then degraded short voice on failure
+The prompt enforces strict filtering:
 
-> **Update (v2026.3.11+):** The announce pipeline fix ([PR #31810](https://github.com/openclaw/openclaw/issues/31714)) landed in v2026.3.11. If you're on v2026.3.12+, you can use `delivery.mode=announce` for text delivery and let the agent handle voice only. See [Usage](#usage) for both modes.
+- **Pass**: foundational model updates (A-tier), immediately usable tools/plugins/open-source projects (B-tier)
+- **Drop**: opinion pieces, "PPT products" with no demo/code, stock news, marketing clickbait
+- **Source trust rating**: every item tagged S/A/B/C based on origin (official repo > active open-source > aggregator > personal repost)
+- **Verification required**: S-tier items must have fetchable evidence from official sources, or get downgraded
+
+## How It Works
+
+```
+┌─────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
+│  Cron 08:30 │────▶│ Agent scans  │────▶│ Filter/rank  │────▶│ Telegram │
+│  (OpenClaw) │     │ sources      │     │ anti-hype    │     │ text +   │
+│             │     │ (web_search  │     │ S/B/C/D tier │     │ voice 🔊 │
+│             │     │  + web_fetch)│     │              │     │          │
+└─────────────┘     └──────────────┘     └──────────────┘     └──────────┘
+```
+
+1. **OpenClaw cron** triggers an isolated agent session daily
+2. **Agent** executes the [prompt](./prompts/ai-intel-daily-prompt.md): searches 5 source categories, cross-validates via official URLs
+3. **Report** generated in structured format with actionable insights
+4. **Delivery**: text via announce, voice via Edge TTS (`asVoice=true`)
+5. **TTS fallback**: retry with chunking → failure notice → degraded short voice (never silent)
 
 ## Quick Start
 
-```bash
-# Clone
-git clone https://github.com/Iterate-H/telegram-voice-cron-stable.git
+### 1. Create a cron job in OpenClaw
 
-# Apply to a cron job
+```bash
+openclaw cron add \
+  --name "ai-intel:daily-0830" \
+  --cron "30 8 * * *" \
+  --tz "Asia/Shanghai" \
+  --session isolated \
+  --announce \
+  --channel telegram \
+  --to <your-telegram-chat-id> \
+  --best-effort-deliver \
+  --timeout-seconds 900
+```
+
+### 2. Apply the stable delivery template
+
+```bash
 bash scripts/apply-stable-cron.sh \
   --job-id <cronJobId> \
-  --target <telegramChatId> \
-  --prompt-file /path/to/your-prompt.md \
+  --target <your-telegram-chat-id> \
+  --prompt-file /absolute/path/to/prompts/ai-intel-daily-prompt.md \
   --voice zh-CN-XiaoxiaoNeural
+```
 
-# Test
+### 3. Test
+
+```bash
 openclaw cron run <cronJobId>
-
-# Verify
 openclaw cron runs --id <cronJobId> --limit 1
 ```
 
-## Usage
+Check Telegram for text message + round voice bubble.
 
-### Mode A: Agent sends everything (pre-v2026.3.11 or maximum control)
+## Customization
 
-The apply script sets `delivery.mode=none` and injects a message template where the agent:
+### Change the prompt
 
-1. Sends text to Telegram via tool call
-2. Generates TTS audio with Edge TTS
-3. Sends voice bubble (`asVoice=true`) to Telegram
-4. Outputs `NO_REPLY`
+Edit [`prompts/ai-intel-daily-prompt.md`](./prompts/ai-intel-daily-prompt.md) to adjust:
 
-### Mode B: Announce + agent voice (v2026.3.12+, recommended)
+- **Sources**: add/remove from the whitelist (GitHub, HuggingFace, official blogs, etc.)
+- **Filter criteria**: what counts as S-tier vs noise for your domain
+- **Output format**: restructure sections to match your reading style
+- **Language**: the prompt is in Chinese but works with any language — just rewrite the output format
 
-After upgrading OpenClaw, switch to announce for text delivery:
+### Change the voice
 
 ```bash
-openclaw cron edit <jobId> \
-  --announce \
-  --channel telegram \
-  --to <chatId> \
-  --best-effort-deliver
+# List available voices
+node node_modules/node-edge-tts/examples/list-voices.js
+
+# Common choices
+--voice zh-CN-XiaoxiaoNeural    # Chinese female (default)
+--voice zh-CN-YunxiNeural       # Chinese male
+--voice en-US-AriaNeural        # English female
 ```
 
-Then update the agent message so it only sends the voice bubble and outputs the full report text as its final response (announce delivers the text automatically).
+### Change the schedule
 
-## TTS Failure Handling
+```bash
+openclaw cron edit <jobId> --cron "0 9 * * *"   # 09:00 daily
+openclaw cron edit <jobId> --cron "0 9 * * 1-5"  # Weekdays only
+```
 
-The template enforces a strict fallback chain:
+## Delivery Stability
+
+This project includes a workaround for known OpenClaw announce delivery bugs ([#14743](https://github.com/openclaw/openclaw/issues/14743), [#25670](https://github.com/openclaw/openclaw/issues/25670), [#31714](https://github.com/openclaw/openclaw/issues/31714)) that cause silent message loss to Telegram.
+
+**If on OpenClaw v2026.3.12+** (recommended): use `--announce` mode. The fix is included.
+
+**If on older versions**: the apply script sets `delivery.mode=none` and the agent sends both text and voice directly via tool calls, bypassing the broken announce pipeline.
+
+### TTS Fallback Chain
 
 | Step | Condition | Action |
 |------|-----------|--------|
 | 1 | TTS succeeds | Send voice bubble normally |
-| 2 | First failure | Retry with chunked text (<=800 chars per segment) |
-| 3 | Second failure | Send failure notice text to same chat |
-| 4 | Degraded voice | Send short voice (title + 3 action items) within 60s |
+| 2 | First failure | Retry with chunked text (<=800 chars/segment) |
+| 3 | Second failure | Send failure notice to chat |
+| 4 | Degraded voice | Short voice (title + 3 items) within 60s |
 
-Voice delivery is never silently skipped — every code path produces at least one voice bubble.
+Every code path produces at least one voice bubble — delivery never silently fails.
 
 ## File Structure
 
 ```
-telegram-voice-cron-stable/
-  SKILL.md           # OpenClaw skill definition (frontmatter + instructions)
-  skill-info.json    # Skill metadata for packaging/distribution
-  scripts/
-    apply-stable-cron.sh   # One-command setup script
-  dist/
-    telegram-voice-cron-stable.skill   # Packaged skill (zip)
+├── README.md
+├── README.zh-CN.md
+├── SKILL.md                    # OpenClaw skill definition
+├── skill-info.json             # Skill metadata
+├── prompts/
+│   └── ai-intel-daily-prompt.md  # The core prompt (customizable)
+├── scripts/
+│   └── apply-stable-cron.sh      # One-command setup
+└── dist/
+    └── telegram-voice-cron-stable.skill  # Packaged skill (zip)
 ```
 
 ## Requirements
 
-- [OpenClaw](https://github.com/openclaw/openclaw) (CLI: `openclaw cron edit`, `openclaw cron run`)
-- [Edge TTS](https://github.com/nicekid1/node-edge-tts) (via node-edge-tts, internet required)
-- Telegram bot with send permissions to the target chat
+- [OpenClaw](https://github.com/openclaw/openclaw) with Telegram channel configured
+- [Edge TTS](https://github.com/nicekid1/node-edge-tts) (free, no API key needed)
+- Internet access (for source scanning and TTS)
 
 ## License
 
